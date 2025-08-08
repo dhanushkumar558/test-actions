@@ -9,6 +9,7 @@ function App() {
   return (
     <>
       <h1>Hi test </h1>
+      <h2>Another test</h2>
     </>
   )
 }
