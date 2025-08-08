@@ -2,7 +2,7 @@ name: Deploy React App to VPS
 
 on:
   push:
-    branches: [main] # Runs on push to main branch
+    branches: [main] # Trigger on push to main branch
 
 jobs:
   deploy:
@@ -32,16 +32,27 @@ jobs:
         target: "/home/dhanushkumar/test-action"
         strip_components: 1
 
-    # 5. SSH into VPS and start server on port 4002
-    - name: Run app on VPS
+    # 5. SSH into VPS and run with PM2 on port 4002
+    - name: Run app on VPS with PM2
       uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.VPS_HOST }}
         username: ${{ secrets.VPS_USER }}
-        key: ${{ secrets.SSH_KEY}}
+        key: ${{ secrets.SSH_KEY }}
         script: |
+          # Install PM2 globally if not installed
+          if ! command -v pm2 &> /dev/null
+          then
+            sudo npm install -g pm2
+          fi
+          
           cd /home/dhanushkumar/test-action
-          # Kill any old npx serve process
-          pkill -f "npx serve" || true
-          # Start new server in background on port 4002
-          nohup npx serve -s . -l 4002 >/dev/null 2>&1 &
+          
+          # Stop old PM2 process if exists
+          pm2 delete test-action || true
+          
+          # Start new build with PM2 on port 4002
+          pm2 start npx --name test-action -- serve -s . -l 4002
+          
+          # Save PM2 process list so it restarts on reboot
+          pm2 save
