@@ -1,0 +1,47 @@
+name: Deploy React App to VPS
+
+on:
+  push:
+    branches: [main] # Runs on push to main branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 1. Checkout source code
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    # 2. Install dependencies
+    - name: Install dependencies
+      run: npm install
+
+    # 3. Build Vite project (outputs to dist/)
+    - name: Build project
+      run: npm run build
+
+    # 4. Copy build files to VPS
+    - name: Copy build to VPS
+      uses: appleboy/scp-action@v0.1.4
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.VPS_SSH_KEY }}
+        source: "dist/*"
+        target: "/home/dhanushkumar/test-action"
+        strip_components: 1
+
+    # 5. SSH into VPS and start server on port 4002
+    - name: Run app on VPS
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.VPS_HOST }}
+        username: ${{ secrets.VPS_USER }}
+        key: ${{ secrets.SSH_KEY }}
+        script: |
+          cd /home/dhanushkumar/test-action
+          # Kill any old npx serve process
+          pkill -f "npx serve" || true
+          # Start new server in background on port 4002
+          nohup npx serve -s . -l 4002 >/dev/null 2>&1 &
